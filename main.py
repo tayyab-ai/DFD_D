@@ -20,13 +20,13 @@ intents = discord.Intents.default()
 intents.message_content = True  # Allow bot to read message content
 intents.messages = True  # Allow bot to receive messages
 bot = commands.Bot(command_prefix='!', intents=intents)
+
 server_running = False
 
 # Configuration
 UPLOAD_FOLDER = tempfile.gettempdir()
 MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50MB max file size
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'avi', 'mov', 'mp3', 'wav', 'ogg', 'm4a'}
-
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
@@ -46,38 +46,27 @@ def upload_file():
     try:
         app.logger.info("File upload request received")
         
-        # Check if file is present in request
         if 'file' not in request.files:
             app.logger.warning("No file part in request")
             return jsonify({'error': 'No file selected'}), 400
         
         file = request.files['file']
         
-        # Check if file is selected
         if file.filename == '':
             app.logger.warning("No file selected")
             return jsonify({'error': 'No file selected'}), 400
         
-        # Check if file is allowed
         if not allowed_file(file.filename):
             app.logger.warning(f"File type not allowed: {file.filename}")
             return jsonify({'error': 'File type not supported. Please upload image, video, or audio files.'}), 400
         
         if file and allowed_file(file.filename):
-            # Secure the filename
             filename = secure_filename(file.filename)
             app.logger.info(f"Processing file: {filename}")
-            
-            # Save file temporarily (simulate processing)
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(file_path)
-            
-            # Simulate processing time
             time.sleep(1)
-            
-            # Generate dummy results based on file type
             file_extension = filename.rsplit('.', 1)[1].lower()
-            
             if file_extension in ['png', 'jpg', 'jpeg', 'gif']:
                 file_type = "Image"
                 confidence = 0.85
@@ -86,19 +75,15 @@ def upload_file():
                 file_type = "Video"
                 confidence = 0.92
                 result_text = f"Testing: {int(confidence * 100)}% Fake"
-            else:  # audio files
+            else:
                 file_type = "Audio"
                 confidence = 0.78
                 result_text = f"Testing: {int(confidence * 100)}% Fake"
-            
-            # Clean up temporary file
             try:
                 os.remove(file_path)
                 app.logger.info(f"Temporary file removed: {file_path}")
             except Exception as e:
                 app.logger.warning(f"Could not remove temporary file: {e}")
-            
-            # Return dummy results
             response = {
                 'success': True,
                 'result': result_text,
@@ -107,10 +92,8 @@ def upload_file():
                 'filename': filename,
                 'message': 'Analysis complete! This is a prototype with dummy results.'
             }
-            
             app.logger.info(f"Analysis complete for {filename}")
             return jsonify(response)
-    
     except Exception as e:
         app.logger.error(f"Error processing upload: {e}")
         return jsonify({
@@ -153,14 +136,17 @@ async def status(ctx):
     else:
         await ctx.send("Website not running.")
 
+# Fetch token from environment variable securely
+token = os.getenv('DISCORD_TOKEN')
+if token is None:
+    raise EnvironmentError("DISCORD_TOKEN environment variable is not set.")
+
 # Start Flask server and bot
 if __name__ == '__main__':
     try:
         app.logger.info("Starting Flask server and Discord bot")
-        # Start Flask server in a thread
         threading.Thread(target=app.run, args=('0.0.0.0', 5000), kwargs={'debug': False}).start()
         server_running = True
-        # Start bot
-        bot.run('MTM5ODU2MTUwMTE5MDU1MzczMg.GZPwIf.phRCcM0btT1UyPneUzDIvjHuGlYCH6WHy-Wu1g')  # Your Discord bot token (unchanged)
+        bot.run(token)
     except Exception as e:
         app.logger.error(f"Bot or server failed to start: {e}")
