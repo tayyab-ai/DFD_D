@@ -8,61 +8,46 @@ import discord
 from discord.ext import commands
 import threading
 
-# Configure logging for debugging
 logging.basicConfig(level=logging.DEBUG)
 
-# Create Flask app
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "deepfake-detector-secret-key")
 
-# Create Discord bot with intents
 intents = discord.Intents.default()
-intents.message_content = True  # Allow bot to read message content
-intents.messages = True  # Allow bot to receive messages
+intents.message_content = True
+intents.messages = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 server_running = False
 
-# Configuration
 UPLOAD_FOLDER = tempfile.gettempdir()
-MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50MB max file size
+MAX_CONTENT_LENGTH = 50 * 1024 * 1024
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'avi', 'mov', 'mp3', 'wav', 'ogg', 'm4a'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
-
 def allowed_file(filename):
-    """Check if file extension is allowed"""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
 
 @app.route('/')
 def home():
-    """Home page route"""
     app.logger.info("Home page accessed")
     return render_template('index.html')
 
-
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    """Handle file upload and return dummy deepfake detection results"""
     try:
         app.logger.info("File upload request received")
-
         if 'file' not in request.files:
             app.logger.warning("No file part in request")
             return jsonify({'error': 'No file selected'}), 400
-
         file = request.files['file']
-
         if file.filename == '':
             app.logger.warning("No file selected")
             return jsonify({'error': 'No file selected'}), 400
-
         if not allowed_file(file.filename):
             app.logger.warning(f"File type not allowed: {file.filename}")
             return jsonify({'error': 'File type not supported. Please upload image, video, or audio files.'}), 400
-
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             app.logger.info(f"Processing file: {filename}")
@@ -99,58 +84,42 @@ def upload_file():
             return jsonify(response)
     except Exception as e:
         app.logger.error(f"Error processing upload: {e}")
-        return jsonify({
-            'error': 'An error occurred while processing your file. Please try again.',
-            'success': False
-        }), 500
-
+        return jsonify({'error': 'An error occurred while processing your file. Please try again.', 'success': False}), 500
 
 @app.errorhandler(413)
 def too_large(e):
-    """Handle file too large error"""
     app.logger.warning("File too large uploaded")
-    return jsonify({
-        'error': f'File too large. Maximum size is {MAX_CONTENT_LENGTH // (1024 * 1024)} MB.',
-        'success': False
-    }), 413
-
+    return jsonify({'error': f'File too large. Maximum size is {MAX_CONTENT_LENGTH // (1024 * 1024)} MB.', 'success': False}), 413
 
 @bot.event
 async def on_ready():
-    """Bot startup event"""
     print(f'Bot ready as {bot.user}')
     app.logger.info(f"Bot started: {bot.user}")
 
-
 @bot.command()
 async def startWebsite(ctx):
-    """Start the Flask server"""
     global server_running
+    public_url = os.getenv('PUBLIC_URL', 'http://localhost:5000')
     if not server_running:
         app.logger.info("Starting Flask server via bot command")
         threading.Thread(target=app.run, args=('0.0.0.0', 5000), kwargs={'debug': False}).start()
         server_running = True
-        await ctx.send("Website live: https://dfdd-production.up.railway.app")
+        await ctx.send(f"Website live: {public_url}")
     else:
         await ctx.send("Website already running!")
 
-
 @bot.command()
 async def status(ctx):
-    """Check server status"""
+    public_url = os.getenv('PUBLIC_URL', 'http://localhost:5000')
     if server_running:
-        await ctx.send("Website running at https://dfdd-production.up.railway.app")
+        await ctx.send(f"Website running at {public_url}")
     else:
         await ctx.send("Website not running.")
 
-
-# Fetch token from environment variable securely
 token = os.getenv('DISCORD_TOKEN')
 if token is None:
     raise EnvironmentError("DISCORD_TOKEN environment variable is not set.")
 
-
-# Start Flask server and bot
 if __name__ == '__main__':
     try:
         app.logger.info("Starting Flask server and Discord bot")
