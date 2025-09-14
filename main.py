@@ -30,9 +30,11 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'avi', 'mov', 'mp3', '
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
+
 def allowed_file(filename):
     """Check if file extension is allowed"""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 @app.route('/')
 def home():
@@ -40,26 +42,27 @@ def home():
     app.logger.info("Home page accessed")
     return render_template('index.html')
 
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
     """Handle file upload and return dummy deepfake detection results"""
     try:
         app.logger.info("File upload request received")
-        
+
         if 'file' not in request.files:
             app.logger.warning("No file part in request")
             return jsonify({'error': 'No file selected'}), 400
-        
+
         file = request.files['file']
-        
+
         if file.filename == '':
             app.logger.warning("No file selected")
             return jsonify({'error': 'No file selected'}), 400
-        
+
         if not allowed_file(file.filename):
             app.logger.warning(f"File type not allowed: {file.filename}")
             return jsonify({'error': 'File type not supported. Please upload image, video, or audio files.'}), 400
-        
+
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             app.logger.info(f"Processing file: {filename}")
@@ -101,6 +104,7 @@ def upload_file():
             'success': False
         }), 500
 
+
 @app.errorhandler(413)
 def too_large(e):
     """Handle file too large error"""
@@ -110,11 +114,13 @@ def too_large(e):
         'success': False
     }), 413
 
+
 @bot.event
 async def on_ready():
     """Bot startup event"""
     print(f'Bot ready as {bot.user}')
     app.logger.info(f"Bot started: {bot.user}")
+
 
 @bot.command()
 async def startWebsite(ctx):
@@ -124,22 +130,25 @@ async def startWebsite(ctx):
         app.logger.info("Starting Flask server via bot command")
         threading.Thread(target=app.run, args=('0.0.0.0', 5000), kwargs={'debug': False}).start()
         server_running = True
-        await ctx.send("Website live: http://localhost:5000")
+        await ctx.send("Website live: https://dfdd-production.up.railway.app")
     else:
         await ctx.send("Website already running!")
+
 
 @bot.command()
 async def status(ctx):
     """Check server status"""
     if server_running:
-        await ctx.send("Website running at http://localhost:5000")
+        await ctx.send("Website running at https://dfdd-production.up.railway.app")
     else:
         await ctx.send("Website not running.")
+
 
 # Fetch token from environment variable securely
 token = os.getenv('DISCORD_TOKEN')
 if token is None:
     raise EnvironmentError("DISCORD_TOKEN environment variable is not set.")
+
 
 # Start Flask server and bot
 if __name__ == '__main__':
