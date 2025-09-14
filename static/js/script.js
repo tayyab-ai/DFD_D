@@ -1,14 +1,11 @@
-// Global flag to track upload status
 let isUploading = false;
 
-// When page content loads
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Deepfake Detector initialized');
     initializeEventListeners();
     addSmoothScrolling();
-    console.log('Deepfake Detector initialized');
 });
 
-// Set up event listeners for form and file input
 function initializeEventListeners() {
     const uploadForm = document.getElementById('uploadForm');
     const fileInput = document.getElementById('fileInput');
@@ -21,11 +18,9 @@ function initializeEventListeners() {
         fileInput.addEventListener('change', handleFileSelection);
     }
 
-    // Navbar scroll styling (optional)
     window.addEventListener('scroll', handleNavbarScroll);
 }
 
-// Change navbar style on scroll (optional beautification)
 function handleNavbarScroll() {
     const navbar = document.querySelector('.navbar');
     if (window.scrollY > 50) {
@@ -37,23 +32,26 @@ function handleNavbarScroll() {
     }
 }
 
-// Enable smooth scrolling for navigation links (optional)
 function addSmoothScrolling() {
     const navLinks = document.querySelectorAll('a[href^="#"]');
+
     navLinks.forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
             const targetId = this.getAttribute('href');
             const targetSection = document.querySelector(targetId);
+
             if (targetSection) {
-                const offsetTop = targetSection.offsetTop - 70; 
-                window.scrollTo({ top: offsetTop, behavior: 'smooth' });
+                const offsetTop = targetSection.offsetTop - 70; // for fixed navbar
+                window.scrollTo({
+                    top: offsetTop,
+                    behavior: 'smooth'
+                });
             }
         });
     });
 }
 
-// Handle file selection, check size and type
 function handleFileSelection(event) {
     const file = event.target.files[0];
     const analyzeBtn = document.getElementById('analyzeBtn');
@@ -63,13 +61,12 @@ function handleFileSelection(event) {
 
         if (file.size > maxSize) {
             showError('File size must be less than 50MB. Please choose a smaller file.');
-            event.target.value = ''; // clear input
+            event.target.value = '';
             analyzeBtn.disabled = true;
             analyzeBtn.innerHTML = '<i class="fas fa-search me-2"></i>Analyze File';
             return;
         }
 
-        // Allowed MIME types
         const allowedTypes = [
             'image/png', 'image/jpeg', 'image/jpg', 'image/gif',
             'video/mp4', 'video/avi', 'video/quicktime',
@@ -78,30 +75,27 @@ function handleFileSelection(event) {
 
         if (!allowedTypes.includes(file.type)) {
             showError('Invalid file type. Please upload an image, video, or audio file.');
-            event.target.value = ''; // clear input
+            event.target.value = '';
             analyzeBtn.disabled = true;
             analyzeBtn.innerHTML = '<i class="fas fa-search me-2"></i>Analyze File';
             return;
         }
 
-        // Valid file, update UI
         analyzeBtn.innerHTML = `<i class="fas fa-search me-2"></i>Analyze "${file.name}"`;
         analyzeBtn.disabled = false;
 
         console.log('File selected:', file.name, 'Size:', formatFileSize(file.size), 'Type:', file.type);
     } else {
-        // No file chosen, reset button
         analyzeBtn.innerHTML = '<i class="fas fa-search me-2"></i>Analyze File';
         analyzeBtn.disabled = true;
     }
 }
 
-// When form submits, handle uploading asynchronously
 async function handleFileUpload(event) {
     event.preventDefault();
 
     if (isUploading) {
-        console.log('Upload in progress...');
+        console.log('Upload already in progress');
         return;
     }
 
@@ -120,6 +114,8 @@ async function handleFileUpload(event) {
     try {
         const formData = new FormData();
         formData.append('file', file);
+
+        console.log('Uploading file:', file.name);
 
         const response = await fetch('/upload', {
             method: 'POST',
@@ -144,7 +140,6 @@ async function handleFileUpload(event) {
     }
 }
 
-// Show loading spinner and disable upload button while uploading
 function showLoadingSpinner() {
     const spinner = document.getElementById('loadingSpinner');
     const analyzeBtn = document.getElementById('analyzeBtn');
@@ -156,7 +151,6 @@ function showLoadingSpinner() {
     }
 }
 
-// Hide spinner and enable upload button after upload
 function hideLoadingSpinner() {
     const spinner = document.getElementById('loadingSpinner');
     const analyzeBtn = document.getElementById('analyzeBtn');
@@ -168,7 +162,6 @@ function hideLoadingSpinner() {
     }
 }
 
-// Show results returned from the server
 function showResults(data) {
     const resultsSection = document.getElementById('results');
     const resultContent = document.getElementById('resultContent');
@@ -200,6 +193,7 @@ function showResults(data) {
                     <p class="mb-2"><strong>File:</strong> ${data.filename}</p>
                     <p class="mb-2"><strong>Type:</strong> ${data.file_type}</p>
                     <p class="mb-3"><strong>Confidence:</strong> ${confidence}%</p>
+                    
                     <div class="confidence-bar">
                         <div class="confidence-fill" style="width: ${confidence}%"></div>
                     </div>
@@ -212,6 +206,7 @@ function showResults(data) {
                     </div>
                 </div>
             </div>
+            
             <div class="alert alert-info mt-4" role="alert">
                 <i class="fas fa-info-circle me-2"></i>
                 ${data.message}
@@ -219,7 +214,6 @@ function showResults(data) {
         </div>
     `;
 
-    // Show results with animation
     resultsSection.classList.remove('d-none');
     resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -228,7 +222,6 @@ function showResults(data) {
     }, 100);
 }
 
-// Hide results section
 function hideResults() {
     const resultsSection = document.getElementById('results');
     if (resultsSection) {
@@ -236,17 +229,19 @@ function hideResults() {
     }
 }
 
-// Return icon class based on file type
 function getFileTypeIcon(fileType) {
     switch (fileType.toLowerCase()) {
-        case 'image': return 'image';
-        case 'video': return 'video';
-        case 'audio': return 'headphones';
-        default: return 'file';
+        case 'image':
+            return 'image';
+        case 'video':
+            return 'video';
+        case 'audio':
+            return 'headphones';
+        default:
+            return 'file';
     }
 }
 
-// Show error messages to user
 function showError(message) {
     let errorAlert = document.getElementById('errorAlert');
 
@@ -273,7 +268,31 @@ function showError(message) {
     console.error('Error shown to user:', message);
 }
 
-// Utility to format file size for display
+function resetForm() {
+    const uploadForm = document.getElementById('uploadForm');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+
+    if (uploadForm) {
+        uploadForm.reset();
+    }
+
+    if (analyzeBtn) {
+        analyzeBtn.innerHTML = '<i class="fas fa-search me-2"></i>Analyze File';
+        analyzeBtn.disabled = true;
+    }
+
+    hideResults();
+    hideLoadingSpinner();
+    isUploading = false;
+
+    const uploadSection = document.getElementById('upload');
+    if (uploadSection) {
+        uploadSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    console.log('Form reset');
+}
+
 function formatFileSize(bytes) {
     if (bytes === 0) return '0 Bytes';
 
@@ -283,3 +302,26 @@ function formatFileSize(bytes) {
 
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    window.addEventListener('scroll', function() {
+        const scrolled = window.pageYOffset;
+        const hero = document.querySelector('.hero-section');
+        if (hero) {
+            hero.style.transform = `translateY(${scrolled * 0.5}px)`;
+        }
+    });
+
+    const cards = document.querySelectorAll('.card');
+    cards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-10px) scale(1.02)';
+        });
+
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0) scale(1)';
+        });
+    });
+});
+
+console.log('Deepfake Detector JavaScript loaded successfully');
