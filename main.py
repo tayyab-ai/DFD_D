@@ -30,6 +30,7 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.messages = True
 bot = commands.Bot(command_prefix='!', intents=intents)
+
 server_running = False
 
 def allowed_file(filename):
@@ -65,16 +66,15 @@ def upload_file():
         mime = magic.Magic(mime=True)
         mime_type = mime.from_buffer(file_content)
 
-        # ✅ More flexible allowed MIME types
+        # Allowed MIME types
         allowed_mime_types = [
             'image/png', 'image/jpeg', 'image/gif',
             'video/mp4', 'video/x-msvideo', 'video/quicktime',
-            'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg',
+            'audio/mpeg', 'audio/wav', 'audio/ogg',
             'audio/mp4', 'audio/x-m4a', 'application/octet-stream'
         ]
 
         file_extension = file.filename.rsplit('.', 1)[1].lower()
-
         if not (mime_type in allowed_mime_types or file_extension in ALLOWED_EXTENSIONS):
             app.logger.warning(f"File MIME type not allowed: {mime_type}")
             return jsonify({'error': 'File MIME type not supported.'}), 400
@@ -125,16 +125,40 @@ def upload_file():
         app.logger.error(f"Error processing upload: {e}")
         return jsonify({'error': 'An error occurred while processing your file. Please try again.', 'success': False}), 500
 
-# Run flask and bot
+@bot.event
+async def on_ready():
+    print(f'Bot ready as {bot.user}')
+    app.logger.info(f"Bot started: {bot.user}")
+
+@bot.command()
+async def startWebsite(ctx):
+    global server_running
+    public_url = os.getenv('PUBLIC_URL', 'http://localhost:5000')
+    if not server_running:
+        app.logger.info("Starting Flask server via bot command")
+        threading.Thread(target=app.run, args=('0.0.0.0', 5000), kwargs={'debug': False}).start()
+        server_running = True
+        await ctx.send(f"Website live: {public_url}")
+    else:
+        await ctx.send("Website already running!")
+
+@bot.command()
+async def status(ctx):
+    public_url = os.getenv('PUBLIC_URL', 'http://localhost:5000')
+    if server_running:
+        await ctx.send(f"Website running at {public_url}")
+    else:
+        await ctx.send("Website not running.")
+
+token = os.getenv('DISCORD_TOKEN')
+if token is None:
+    raise EnvironmentError("DISCORD_TOKEN environment variable is not set.")
+
 if __name__ == '__main__':
     try:
         app.logger.info("Starting Flask server and Discord bot")
         threading.Thread(target=app.run, args=('0.0.0.0', 5000), kwargs={'debug': False}).start()
-        global server_running
         server_running = True
-        token = os.getenv('DISCORD_TOKEN')
-        if token is None:
-            raise EnvironmentError("DISCORD_TOKEN environment variable is not set.")
         bot.run(token)
     except Exception as e:
         app.logger.error(f"Bot or server failed to start: {e}")
