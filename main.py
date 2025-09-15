@@ -22,7 +22,7 @@ MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50 MB
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
-# Allowed file extensions (for basic check)
+# Allowed file extensions
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'avi', 'mov', 'mp3', 'wav', 'ogg', 'm4a'}
 
 # Initialize discord bot
@@ -65,13 +65,17 @@ def upload_file():
         mime = magic.Magic(mime=True)
         mime_type = mime.from_buffer(file_content)
 
+        # ✅ More flexible allowed MIME types
         allowed_mime_types = [
-            'image/png', 'image/jpeg', 'image/gif', 
+            'image/png', 'image/jpeg', 'image/gif',
             'video/mp4', 'video/x-msvideo', 'video/quicktime',
-            'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4', 'audio/x-m4a'
+            'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg',
+            'audio/mp4', 'audio/x-m4a', 'application/octet-stream'
         ]
 
-        if mime_type not in allowed_mime_types:
+        file_extension = file.filename.rsplit('.', 1)[1].lower()
+
+        if not (mime_type in allowed_mime_types or file_extension in ALLOWED_EXTENSIONS):
             app.logger.warning(f"File MIME type not allowed: {mime_type}")
             return jsonify({'error': 'File MIME type not supported.'}), 400
 
@@ -82,7 +86,7 @@ def upload_file():
 
         time.sleep(1)  # simulate processing delay
 
-        file_extension = filename.rsplit('.', 1)[1].lower()
+        # Dummy analysis result
         if file_extension in ['png', 'jpg', 'jpeg', 'gif']:
             file_type = "Image"
             confidence = 0.85
@@ -120,8 +124,6 @@ def upload_file():
     except Exception as e:
         app.logger.error(f"Error processing upload: {e}")
         return jsonify({'error': 'An error occurred while processing your file. Please try again.', 'success': False}), 500
-
-# Discord bot events and commands stay the same (not shown here for brevity)
 
 # Run flask and bot
 if __name__ == '__main__':
