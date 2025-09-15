@@ -15,22 +15,15 @@ logging.basicConfig(level=logging.DEBUG)
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "deepfake-detector-secret-key")
 
-# Configure upload settings
 UPLOAD_FOLDER = tempfile.gettempdir()
-MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50 MB
+MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50MB
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
-# Allowed file extensions
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'avi', 'mov', 'mp3', 'wav', 'ogg', 'm4a'}
 
-# Initialize discord bot
-intents = discord.Intents.default()
-intents.message_content = True
-intents.messages = True
-bot = commands.Bot(command_prefix='!', intents=intents)
-
+bot = commands.Bot(command_prefix='!', intents=discord.Intents.default())
 server_running = False
 
 def allowed_file(filename):
@@ -48,9 +41,8 @@ def upload_file():
         if 'file' not in request.files:
             app.logger.warning("No file part in request")
             return jsonify({'error': 'No file selected'}), 400
-
+        
         file = request.files['file']
-
         if file.filename == '':
             app.logger.warning("No file selected")
             return jsonify({'error': 'No file selected'}), 400
@@ -59,19 +51,17 @@ def upload_file():
             app.logger.warning(f"File type not allowed (extension): {file.filename}")
             return jsonify({'error': 'File type not supported. Please upload image, video, or audio files.'}), 400
 
-        # Verify MIME type using file content
+        # MIME type check
         file_content = file.read(2048)
-        file.seek(0)  # reset pointer
-
+        file.seek(0)
         mime = magic.Magic(mime=True)
         mime_type = mime.from_buffer(file_content)
 
-        # Allowed MIME types
         allowed_mime_types = [
-            'image/png', 'image/jpeg', 'image/gif',
+            'image/png', 'image/jpeg', 'image/gif', 
             'video/mp4', 'video/x-msvideo', 'video/quicktime',
-            'audio/mpeg', 'audio/wav', 'audio/ogg',
-            'audio/mp4', 'audio/x-m4a', 'application/octet-stream'
+            'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4', 'audio/x-m4a',
+            'application/octet-stream'
         ]
 
         file_extension = file.filename.rsplit('.', 1)[1].lower()
@@ -84,14 +74,13 @@ def upload_file():
         file.save(file_path)
         app.logger.info(f"Saved file to {file_path}")
 
-        time.sleep(1)  # simulate processing delay
+        time.sleep(1)  # Simulate processing delay
 
-        # Dummy analysis result
-        if file_extension in ['png', 'jpg', 'jpeg', 'gif']:
+        if file_extension in {'png', 'jpg', 'jpeg', 'gif'}:
             file_type = "Image"
             confidence = 0.85
             result_text = f"Testing: {int(confidence * 100)}% Fake"
-        elif file_extension in ['mp4', 'avi', 'mov']:
+        elif file_extension in {'mp4', 'avi', 'mov'}:
             file_type = "Video"
             confidence = 0.92
             result_text = f"Testing: {int(confidence * 100)}% Fake"
@@ -150,15 +139,15 @@ async def status(ctx):
     else:
         await ctx.send("Website not running.")
 
-token = os.getenv('DISCORD_TOKEN')
-if token is None:
-    raise EnvironmentError("DISCORD_TOKEN environment variable is not set.")
-
 if __name__ == '__main__':
     try:
         app.logger.info("Starting Flask server and Discord bot")
         threading.Thread(target=app.run, args=('0.0.0.0', 5000), kwargs={'debug': False}).start()
+        global server_running
         server_running = True
+        token = os.getenv('DISCORD_TOKEN')
+        if token is None:
+            raise EnvironmentError("DISCORD_TOKEN environment variable is not set.")
         bot.run(token)
     except Exception as e:
         app.logger.error(f"Bot or server failed to start: {e}")
